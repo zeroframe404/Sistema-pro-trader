@@ -1,0 +1,80 @@
+risk:
+  enabled: false
+
+  default_sizing_method: "percent_risk"
+  default_risk_per_trade_pct: 1.0
+  max_risk_per_trade_pct: 2.0
+  kelly_fraction: 0.25
+
+  sizing_overrides:
+    binary_option:
+      method: "fixed_amount"
+      amount: 10.0
+    fixed_term:
+      method: "percent_equity"
+      pct: 100.0
+    caution:
+      method: "percent_equity"
+      pct: 100.0
+
+  default_sl_method: "atr_based"
+  atr_multiplier_sl: 2.0
+  default_tp_method: "risk_reward"
+  min_rr_ratio: 1.5
+  trailing_stop_enabled: true
+  trailing_stop_method: "atr_based"
+  trailing_atr_multiplier: 1.5
+
+  max_hold_bars:
+    M1: 30
+    M5: 24
+    M15: 16
+    H1: 48
+    H4: 20
+    D1: 10
+  close_before_session_end_minutes: 30
+  close_before_high_impact_news_minutes: 15
+
+  limits:
+    max_daily_drawdown_pct: 3.0
+    max_weekly_drawdown_pct: 7.0
+    max_open_positions: 5
+    max_exposure_per_symbol_pct: 10.0
+    max_exposure_per_asset_class_pct: 30.0
+    max_correlated_exposure_pct: 20.0
+    min_equity_threshold_pct: 70.0
+
+  slippage:
+    method: "spread_based"
+    fixed_pips: 1.0
+    percent: 0.001
+
+  commissions:
+    forex:
+      method: "per_lot"
+      amount_per_lot: 7.0
+    crypto:
+      method: "percent"
+      pct: 0.001
+    stock:
+      method: "per_share"
+      amount_per_share: 0.01
+    binary_option:
+      method: "zero"
+    fixed_term:
+      method: "zero"
+
+  kill_switch:
+    auto_close_positions: false
+    max_consecutive_losses: 7
+    max_api_error_rate_pct: 20.0
+    max_latency_ms: 2000
+    max_fill_deviation_pct: 2.0
+    max_equity_spike_pct: 10.0
+
+  paper:
+    initial_balance: 10000.0
+    currency: "USD"
+    leverage: 100
+    fill_mode: "realistic"
+    partial_fill_probability: 0.05

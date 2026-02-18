@@ -66,6 +66,7 @@ dev = [
   "pytest-mock>=3.14,<4",
   "respx>=0.21,<1",
   "freezegun>=1.5,<2",
+  "time-machine>=2.14,<3",
   "mypy>=1.10,<2",
   "ruff>=0.5,<1",
 ]
@@ -95,6 +96,9 @@ packages = [
   "signals",
   "signals.strategies",
   "signals.filters",
+  "risk",
+  "execution",
+  "execution.adapters",
 ]
 
 [tool.ruff]

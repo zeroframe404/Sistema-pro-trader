@@ -270,6 +270,275 @@ class SignalsConfig(BaseModel):
     backvalidation: BackvalidationConfig = Field(default_factory=BackvalidationConfig)
 
 
+class RiskSizingMethod(StrEnum):
+    """Supported position sizing methods for risk module."""
+
+    FIXED_UNITS = "fixed_units"
+    FIXED_AMOUNT = "fixed_amount"
+    PERCENT_EQUITY = "percent_equity"
+    PERCENT_RISK = "percent_risk"
+    ATR_BASED = "atr_based"
+    KELLY_FRACTIONAL = "kelly_fractional"
+
+
+class SlippageMethod(StrEnum):
+    """Supported slippage models."""
+
+    FIXED_PIPS = "fixed_pips"
+    PERCENT = "percent"
+    SPREAD_BASED = "spread_based"
+    VOLATILITY_BASED = "volatility_based"
+
+
+class CommissionMethod(StrEnum):
+    """Supported commission models."""
+
+    PER_LOT = "per_lot"
+    PERCENT = "percent"
+    PER_SHARE = "per_share"
+    FIXED = "fixed"
+    ZERO = "zero"
+
+
+class TrailingStopMethod(StrEnum):
+    """Supported trailing stop behaviors."""
+
+    FIXED_DISTANCE = "fixed_distance"
+    ATR_BASED = "atr_based"
+    BREAKEVEN = "breakeven"
+    STEP = "step"
+
+
+class StopLossMethod(StrEnum):
+    """Supported stop-loss calculation methods."""
+
+    ATR_BASED = "atr_based"
+    FIXED_PIPS = "fixed_pips"
+    SUPPORT_RESISTANCE = "support_resistance"
+    PERCENT = "percent"
+    CHANDELIER = "chandelier"
+
+
+class TakeProfitMethod(StrEnum):
+    """Supported take-profit calculation methods."""
+
+    RISK_REWARD = "risk_reward"
+    FIXED_PIPS = "fixed_pips"
+    SUPPORT_RESISTANCE = "support_resistance"
+    ATR_BASED = "atr_based"
+
+
+class SizingOverrideConfig(BaseModel):
+    """Per-asset sizing override."""
+
+    method: RiskSizingMethod
+    amount: float | None = Field(default=None, ge=0.0)
+    pct: float | None = Field(default=None, ge=0.0)
+    risk_pct: float | None = Field(default=None, ge=0.0)
+
+
+class ExposureLimitsConfig(BaseModel):
+    """Exposure limits used by risk checks."""
+
+    max_exposure_per_symbol_pct: float = Field(default=10.0, ge=0.0)
+    max_exposure_per_asset_class_pct: float = Field(default=30.0, ge=0.0)
+    max_correlated_exposure_pct: float = Field(default=20.0, ge=0.0)
+
+
+class RiskLimitsConfig(BaseModel):
+    """Global hard risk limits."""
+
+    max_daily_drawdown_pct: float = Field(default=3.0, ge=0.0)
+    max_weekly_drawdown_pct: float = Field(default=7.0, ge=0.0)
+    max_open_positions: int = Field(default=5, ge=1)
+    max_exposure_per_symbol_pct: float = Field(default=10.0, ge=0.0)
+    max_exposure_per_asset_class_pct: float = Field(default=30.0, ge=0.0)
+    max_correlated_exposure_pct: float = Field(default=20.0, ge=0.0)
+    min_equity_threshold_pct: float = Field(default=70.0, ge=0.0, le=100.0)
+
+    def to_exposure_limits(self) -> ExposureLimitsConfig:
+        """Return exposure-only subset."""
+
+        return ExposureLimitsConfig(
+            max_exposure_per_symbol_pct=self.max_exposure_per_symbol_pct,
+            max_exposure_per_asset_class_pct=self.max_exposure_per_asset_class_pct,
+            max_correlated_exposure_pct=self.max_correlated_exposure_pct,
+        )
+
+
+class StopConfig(BaseModel):
+    """Stop-loss and take-profit configuration."""
+
+    default_sl_method: StopLossMethod = StopLossMethod.ATR_BASED
+    atr_multiplier_sl: float = Field(default=2.0, ge=0.1)
+    default_tp_method: TakeProfitMethod = TakeProfitMethod.RISK_REWARD
+    min_rr_ratio: float = Field(default=1.5, ge=0.1)
+    trailing_stop_enabled: bool = True
+    trailing_stop_method: TrailingStopMethod = TrailingStopMethod.ATR_BASED
+    trailing_atr_multiplier: float = Field(default=1.5, ge=0.1)
+
+
+class TrailingConfig(BaseModel):
+    """Runtime trailing-stop behavior."""
+
+    method: TrailingStopMethod = TrailingStopMethod.ATR_BASED
+    atr_multiplier: float = Field(default=1.5, ge=0.1)
+    fixed_distance_pips: float = Field(default=10.0, ge=0.0)
+    breakeven_r_multiple: float = Field(default=1.0, ge=0.0)
+    step_r_multiple: float = Field(default=0.5, ge=0.0)
+
+
+class TimeExitConfig(BaseModel):
+    """Time-based forced exit settings."""
+
+    max_hold_bars: dict[str, int] = Field(
+        default_factory=lambda: {
+            "M1": 30,
+            "M5": 24,
+            "M15": 16,
+            "H1": 48,
+            "H4": 20,
+            "D1": 10,
+        }
+    )
+    close_before_session_end_minutes: int = Field(default=30, ge=0)
+    close_before_high_impact_news_minutes: int = Field(default=15, ge=0)
+    force_end_of_day: bool = False
+
+
+class SlippageConfig(BaseModel):
+    """Slippage model settings."""
+
+    method: SlippageMethod = SlippageMethod.SPREAD_BASED
+    fixed_pips: float = Field(default=1.0, ge=0.0)
+    percent: float = Field(default=0.001, ge=0.0)
+
+
+class CommissionRuleConfig(BaseModel):
+    """Commission rule for one asset class bucket."""
+
+    method: CommissionMethod = CommissionMethod.ZERO
+    amount_per_lot: float = Field(default=0.0, ge=0.0)
+    pct: float = Field(default=0.0, ge=0.0)
+    amount_per_share: float = Field(default=0.0, ge=0.0)
+    fixed_amount: float = Field(default=0.0, ge=0.0)
+
+
+class CommissionsConfig(BaseModel):
+    """Commission model per asset bucket."""
+
+    forex: CommissionRuleConfig = Field(
+        default_factory=lambda: CommissionRuleConfig(method=CommissionMethod.PER_LOT, amount_per_lot=7.0)
+    )
+    crypto: CommissionRuleConfig = Field(
+        default_factory=lambda: CommissionRuleConfig(method=CommissionMethod.PERCENT, pct=0.001)
+    )
+    stock: CommissionRuleConfig = Field(
+        default_factory=lambda: CommissionRuleConfig(method=CommissionMethod.PER_SHARE, amount_per_share=0.01)
+    )
+    binary_option: CommissionRuleConfig = Field(
+        default_factory=lambda: CommissionRuleConfig(method=CommissionMethod.ZERO)
+    )
+    fixed_term: CommissionRuleConfig = Field(
+        default_factory=lambda: CommissionRuleConfig(method=CommissionMethod.ZERO)
+    )
+
+
+class KillSwitchConfig(BaseModel):
+    """Kill switch thresholds and automation flags."""
+
+    auto_close_positions: bool = False
+    max_consecutive_losses: int = Field(default=7, ge=1)
+    max_api_error_rate_pct: float = Field(default=20.0, ge=0.0)
+    max_latency_ms: float = Field(default=2000.0, ge=0.0)
+    max_fill_deviation_pct: float = Field(default=2.0, ge=0.0)
+    max_equity_spike_pct: float = Field(default=10.0, ge=0.0)
+
+
+class PaperConfig(BaseModel):
+    """Paper trading runtime defaults."""
+
+    initial_balance: float = Field(default=10_000.0, ge=0.0)
+    currency: str = "USD"
+    leverage: float = Field(default=100.0, ge=1.0)
+    fill_mode: str = "realistic"
+    partial_fill_probability: float = Field(default=0.05, ge=0.0, le=1.0)
+
+
+class RiskConfig(BaseModel):
+    """Risk management and OMS module configuration."""
+
+    enabled: bool = False
+    default_sizing_method: RiskSizingMethod = RiskSizingMethod.PERCENT_RISK
+    default_risk_per_trade_pct: float = Field(default=1.0, ge=0.0)
+    max_risk_per_trade_pct: float = Field(default=2.0, ge=0.0)
+    kelly_fraction: float = Field(default=0.25, ge=0.0, le=1.0)
+    sizing_overrides: dict[str, SizingOverrideConfig] = Field(default_factory=dict)
+
+    default_sl_method: StopLossMethod = StopLossMethod.ATR_BASED
+    atr_multiplier_sl: float = Field(default=2.0, ge=0.1)
+    default_tp_method: TakeProfitMethod = TakeProfitMethod.RISK_REWARD
+    min_rr_ratio: float = Field(default=1.5, ge=0.1)
+    trailing_stop_enabled: bool = True
+    trailing_stop_method: TrailingStopMethod = TrailingStopMethod.ATR_BASED
+    trailing_atr_multiplier: float = Field(default=1.5, ge=0.1)
+
+    max_hold_bars: dict[str, int] = Field(
+        default_factory=lambda: {
+            "M1": 30,
+            "M5": 24,
+            "M15": 16,
+            "H1": 48,
+            "H4": 20,
+            "D1": 10,
+        }
+    )
+    close_before_session_end_minutes: int = Field(default=30, ge=0)
+    close_before_high_impact_news_minutes: int = Field(default=15, ge=0)
+
+    limits: RiskLimitsConfig = Field(default_factory=RiskLimitsConfig)
+    slippage: SlippageConfig = Field(default_factory=SlippageConfig)
+    commissions: CommissionsConfig = Field(default_factory=CommissionsConfig)
+    kill_switch: KillSwitchConfig = Field(default_factory=KillSwitchConfig)
+    paper: PaperConfig = Field(default_factory=PaperConfig)
+
+    @model_validator(mode="after")
+    def ensure_max_risk(self) -> RiskConfig:
+        if self.default_risk_per_trade_pct > self.max_risk_per_trade_pct:
+            self.default_risk_per_trade_pct = self.max_risk_per_trade_pct
+        return self
+
+    def stop_config(self) -> StopConfig:
+        """Build stop config view from root fields."""
+
+        return StopConfig(
+            default_sl_method=self.default_sl_method,
+            atr_multiplier_sl=self.atr_multiplier_sl,
+            default_tp_method=self.default_tp_method,
+            min_rr_ratio=self.min_rr_ratio,
+            trailing_stop_enabled=self.trailing_stop_enabled,
+            trailing_stop_method=self.trailing_stop_method,
+            trailing_atr_multiplier=self.trailing_atr_multiplier,
+        )
+
+    def trailing_config(self) -> TrailingConfig:
+        """Build trailing config view from root fields."""
+
+        return TrailingConfig(
+            method=self.trailing_stop_method,
+            atr_multiplier=self.trailing_atr_multiplier,
+        )
+
+    def time_exit_config(self) -> TimeExitConfig:
+        """Build time-exit config view from root fields."""
+
+        return TimeExitConfig(
+            max_hold_bars=self.max_hold_bars,
+            close_before_session_end_minutes=self.close_before_session_end_minutes,
+            close_before_high_impact_news_minutes=self.close_before_high_impact_news_minutes,
+        )
+
+
 class RootConfig(BaseModel):
     """Root merged configuration."""
 
@@ -278,6 +547,7 @@ class RootConfig(BaseModel):
     strategies: list[StrategyConfig] = Field(default_factory=list)
     indicators: IndicatorsConfig = Field(default_factory=IndicatorsConfig)
     signals: SignalsConfig = Field(default_factory=SignalsConfig)
+    risk: RiskConfig = Field(default_factory=RiskConfig)
 
 
 for model in (
@@ -300,6 +570,18 @@ for model in (
     NotificationsConfig,
     BackvalidationConfig,
     SignalsConfig,
+    SizingOverrideConfig,
+    ExposureLimitsConfig,
+    RiskLimitsConfig,
+    StopConfig,
+    TrailingConfig,
+    TimeExitConfig,
+    SlippageConfig,
+    CommissionRuleConfig,
+    CommissionsConfig,
+    KillSwitchConfig,
+    PaperConfig,
+    RiskConfig,
     RootConfig,
 ):
     model.model_config = {"extra": "forbid"}

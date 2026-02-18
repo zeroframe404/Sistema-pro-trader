@@ -92,14 +92,19 @@ class OrderEvent(BaseEvent):
     """Base order payload used by order lifecycle events."""
 
     order_id: str
+    client_order_id: str | None = None
+    risk_check_id: str | None = None
     symbol: str
     broker: str
     direction: Literal["BUY", "SELL"]
-    order_type: Literal["MARKET", "LIMIT", "STOP"]
+    order_type: Literal["MARKET", "LIMIT", "STOP", "STOP_LIMIT"]
     quantity: float
     price: float | None = None
     stop_loss: float | None = None
     take_profit: float | None = None
+    status: str | None = None
+    is_paper: bool | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class OrderSubmitEvent(OrderEvent):

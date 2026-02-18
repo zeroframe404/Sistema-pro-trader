@@ -20,6 +20,9 @@ Multi-broker, multi-asset, event-driven automated trading platform.
 - Explicacion detallada con razones y pesos.
 - Anti-overtrading: cooldown, limite por ventana, pausa por perdidas consecutivas.
 - Filtros de mercado: regimen, noticias, sesion, spread y correlacion.
+- Gestion de riesgo institucional: position sizing (fixed, percent_risk, ATR, Kelly), drawdown limits y kill switch.
+- OMS completo: ciclo de vida de orden, idempotencia, retry y reconciliacion broker vs estado interno.
+- Paper trading production-ready: misma API de execution con fills simulados, slippage y comisiones configurables.
 
 ## Module Status
 
@@ -27,6 +30,7 @@ Multi-broker, multi-asset, event-driven automated trading platform.
 - Module 1: Data Layer - Complete
 - Module 2: Indicators + Regime - Complete
 - Module 3: Signal Engine - Complete
+- Module 4: Risk + OMS - Complete
 
 ## Architecture
 
@@ -65,6 +69,7 @@ Main YAML files:
 - `config/strategies.yaml`
 - `config/indicators.yaml`
 - `config/signals.yaml`
+- `config/risk.yaml`
 
 Environment overrides:
 
@@ -91,7 +96,13 @@ python scripts/run_module3_demo.py --symbol GGAL --horizon "3 meses"
 python scripts/run_module3_demo.py --all-assets
 ```
 
-3. Smoke run:
+3. Run module 4 demo:
+
+```bash
+python scripts/run_module4_demo.py --scenario all
+```
+
+4. Smoke run:
 
 ```bash
 python main.py --smoke-seconds 8
@@ -141,6 +152,53 @@ print(result.ensemble.explanation) # explicacion en espanol
 - `"6 meses"` -> `position` -> `W1`
 - `"2 anos"` -> `investment` -> `MN1`
 
+## Gestion de Riesgo
+
+### Position Sizing
+
+| Metodo | Descripcion | Cuando usar |
+|---|---|---|
+| `fixed_units` | Tamano fijo | Testing |
+| `fixed_amount` | Monto fijo en USD | Opciones binarias |
+| `percent_equity` | % del equity total | Inversiones largas |
+| `percent_risk` | % del equity como riesgo maximo | Default Forex/Cripto |
+| `atr_based` | Riesgo en multiplos de ATR | Mercados volatiles |
+| `kelly_fractional` | Kelly criterion fraccionado | Con historial de win rate |
+
+### Limites Globales (configurables en `config/risk.yaml`)
+
+```yaml
+limits:
+  max_daily_drawdown_pct: 3.0
+  max_weekly_drawdown_pct: 7.0
+  max_open_positions: 5
+  max_exposure_per_symbol_pct: 10.0
+  max_correlated_exposure_pct: 20.0
+```
+
+### Kill Switch
+
+Se activa automaticamente cuando:
+- Drawdown diario/semanal supera limite.
+- Equity cae por debajo del umbral minimo.
+- Errores API o latencia superan limites.
+- Fill deviation o equity spike indica estado anomalo.
+- Perdidas consecutivas superan el maximo configurado.
+
+## OMS (Order Management)
+
+```
+Signal -> RiskManager -> OrderManager -> BrokerAdapter
+           |                               |
+      Kill Switch               paper | mt5 | iqoption | iol | fxpro | ccxt
+```
+
+Garantias del OMS:
+- Idempotencia para evitar ordenes duplicadas.
+- Retry con backoff exponencial en fallos transitorios.
+- Reconciliacion periodica broker vs estado interno.
+- Paper trading 1:1 con live a nivel API.
+
 ## Quality and Validation
 
 Static checks:
@@ -162,6 +220,7 @@ Validation scripts:
 python tests/validation/validate_indicators.py
 python tests/validation/validate_regime.py
 python tests/validation/validate_signals.py
+python tests/validation/validate_risk_limits.py
 python tests/validation/generate_validation_charts.py
 ```
 
@@ -183,8 +242,8 @@ python tests/validation/generate_validation_charts.py
 - Module 1: Data Layer - Complete
 - Module 2: Indicators + Regime - Complete
 - Module 3: Signal Engine - Complete
-- Module 4: Risk Engine - Planned
-- Module 5: OMS / Execution - Planned
+- Module 4: Risk + OMS - Complete
+- Module 5: Portfolio/Backoffice Extensions - Planned
 - Module 6+: Paper/Live/Backtest/UI expansion - Planned
 
 ## Contributing

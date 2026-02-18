@@ -111,3 +111,4 @@ def test_save_config_persists_signals_file(tmp_path: Path) -> None:
     output_dir = tmp_path / "output"
     save_config(config, output_dir)
     assert (output_dir / "signals.yaml").exists()
+    assert (output_dir / "risk.yaml").exists()
