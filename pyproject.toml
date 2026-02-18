@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "auto-trading-pro"
+version = "0.1.0"
+description = "Auto Trading Pro core foundation"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "pydantic>=2.7,<3",
+  "pyyaml>=6.0,<7",
+  "aiofiles>=23.0,<24",
+  "redis>=5.0,<6",
+  "structlog>=24.0,<25",
+  "rich>=13.0,<14",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0,<9",
+  "pytest-asyncio>=0.23,<1",
+  "mypy>=1.10,<2",
+  "ruff>=0.5,<1",
+]
+watch = [
+  "watchfiles>=0.21,<1",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.setuptools]
+packages = ["core", "strategies"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "N"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+check_untyped_defs = true
+strict_optional = true
+exclude = ["tests/"]

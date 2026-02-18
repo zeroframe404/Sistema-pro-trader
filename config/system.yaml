@@ -1,0 +1,7 @@
+system:
+  environment: development
+  log_level: DEBUG
+  event_bus_backend: asyncio
+  redis_url: null
+  snapshot_interval_seconds: 300
+  timezone: UTC
