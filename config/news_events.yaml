@@ -1,0 +1,12 @@
+﻿events:
+  - event_id: nfp_sample
+    title: Non-Farm Payrolls
+    country: US
+    currency: USD
+    scheduled_at: 2026-03-06T13:30:00+00:00
+    impact: high
+    affected_assets: [EURUSD, GBPUSD, XAUUSD]
+    source: manual
+    actual: null
+    forecast: null
+    previous: null

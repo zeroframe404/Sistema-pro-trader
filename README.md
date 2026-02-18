@@ -1,103 +1,160 @@
-# Auto Trading Pro
+﻿# Auto Trading Pro
 
-Sistema de trading automatico multi-broker y event-driven.
+Sistema de trading automatico multi-broker, multi-activo y event-driven.
 
-Automatic multi-broker trading platform with event-driven architecture.
+Multi-broker, multi-asset, event-driven automated trading platform.
 
-## Estado / Status
+## Vision / Vision
 
-- `Module 0 (Core Foundation)`: implemented and tested.
-- `Module 1 (Data Layer)`: implemented with mock-first testing, storage, normalization, validation, resampling, fallback routing, and optional runtime integration.
+- ES: construir una plataforma modular para data, indicadores, regimen, senales, riesgo y ejecucion.
+- EN: build a modular platform for data, indicators, market regime, signals, risk, and execution.
 
-## Arquitectura / Architecture
+## Module Status
 
-- `core/`: event bus, event models, config, plugin loading, logging, journal, snapshots.
-- `data/`: connectors, normalizer, validator, resampler, timezone logic, asset detection/classification, fallback manager, feed manager.
-- `storage/`: parquet history store, sqlite metadata/quality store, cache manager, repository facade.
-- `strategies/`: strategy plugins.
-- `config/`: YAML runtime config.
-- `tests/`: unit + integration tests.
+- Module 0: Core Foundation (event bus, config, plugins, logging, snapshots, journal)
+- Module 1: Data Layer (connectors, normalization, validation, resampling, storage, repository)
+- Module 2: Indicators + Regime (technical engine, market regime detection, validation scripts)
 
-## Requisitos / Requirements
+## Architecture
 
-- Python `3.11+`
-- Windows, Linux, or macOS (real broker connectors are optional and availability-aware).
+- `core/`: event bus, event types/models, config loader/editor, logging, plugin manager, registry.
+- `data/`: connector contracts + wrappers, feed manager, normalizer, validator, fallback.
+- `storage/`: parquet/sqlite/cache + unified `DataRepository`.
+- `indicators/`: 30+ indicators across trend/momentum/volatility/volume/patterns.
+- `regime/`: trend/volatility/liquidity regime + market conditions + sessions + news windows.
+- `tests/`: unit, integration, and validation scripts.
+- `scripts/`: sample-data bootstrap and module 2 demo runner.
 
-## Instalacion / Installation
+## Requirements
+
+- Python 3.11+
+- Optional native dependencies: TA-Lib (if available, auto-used; otherwise fallback backend is used).
+
+## Installation
+
+Base + dev + data + storage + connectors + module 2 extras:
 
 ```bash
-python -m pip install -e .[dev,data,storage,connectors,watch]
+python -m pip install -r requirements.txt
 ```
 
-Minimal core only:
+Equivalent editable install:
 
 ```bash
-python -m pip install -e .[dev]
+python -m pip install -e .[dev,data,parquet,storage,connectors,watch,indicators,validation]
 ```
 
-## Configuracion / Configuration
+## Configuration
 
-1. Copy values from `.env.example`.
-2. Edit YAML files in `config/`:
+Main YAML files:
+
 - `config/system.yaml`
 - `config/brokers.yaml`
 - `config/strategies.yaml`
+- `config/indicators.yaml`
 
-Default data layer run uses `mock_dev` connector from `config/brokers.yaml`.
-
-## Ejecutar / Run
-
-Normal run:
+Environment overrides use `ATP_` prefix and `__` for nested paths.
+Example:
 
 ```bash
-python main.py
+set ATP_SYSTEM__ENVIRONMENT=development
+set ATP_INDICATORS__REGIME__ENABLED=true
 ```
 
-Smoke run (auto-stop validation):
+## Quickstart
+
+1) Generate/download sample datasets:
+
+```bash
+python scripts/download_sample_data.py
+```
+
+2) Run module 2 demo:
+
+```bash
+python scripts/run_module2_demo.py --symbol EURUSD --timeframe H1
+python scripts/run_module2_demo.py --symbol BTCUSD --timeframe H1
+python scripts/run_module2_demo.py --all-assets
+```
+
+3) Run full app smoke check:
 
 ```bash
 python main.py --smoke-seconds 8
 ```
 
-## Tests & Quality
+## Quality and Validation
+
+Static checks:
 
 ```bash
-python -m pytest tests/ -v
 python -m ruff check .
-python -m mypy core data storage
+python -m mypy core data storage indicators regime
 ```
 
-## Modulo 1 Highlights
+Automated tests:
 
-- Unified `DataConnector` contract.
-- `MockConnector` with injectable bars/ticks, latency, and error simulation.
-- `Normalizer` for broker payload mapping.
-- `DataValidator` for gaps, duplicates, corruption, outliers.
-- `Resampler` for tick->OHLCV and timeframe upsampling.
-- `ParquetStore` monthly partitioning + deduplication.
-- `SQLiteStore` for metadata, quality reports, and last prices.
-- `DataRepository` as the single historical data access point.
-- `FeedManager` orchestration with connector health and fallback routing.
+```bash
+python -m pytest tests/ -v --tb=short
+```
 
-## Seguridad / Security
+Indicator/regime validation:
+
+```bash
+python tests/validation/validate_indicators.py
+python tests/validation/validate_regime.py
+python tests/validation/generate_validation_charts.py
+```
+
+## Module 2 Highlights
+
+Trend:
+
+- SMA, EMA, WMA, DEMA, TEMA, HMA
+- ADX (+DI/-DI), SuperTrend, Ichimoku, Parabolic SAR
+
+Momentum:
+
+- RSI, MACD, Stochastic, StochRSI, CCI, MFI, Williams %R
+
+Volatility:
+
+- ATR, Bollinger Bands (+%B + bandwidth), Keltner Channel, VIX proxy
+
+Volume:
+
+- OBV, VWAP (UTC daily reset), Volume Profile, CMF
+
+Patterns:
+
+- Candlestick detector, chart pattern heuristics, support/resistance pivots
+
+Regime:
+
+- Trend/volatility/liquidity classification
+- Hurst + autocorrelation + ADX/ATR/EMA signals
+- Tradeability checks (`spread_spike`, `low_volume`, `bad_session`, `news_window`, `price_freeze`)
+
+## Security
 
 - Never commit real credentials.
-- Logging helpers redact sensitive keys (`password`, `token`, `secret`, `api_key`, etc.).
-- Tests run against `MockConnector` (no real broker connectivity required).
+- Keep secrets in `.env` only.
+- Logging redacts sensitive keys (`password`, `token`, `secret`, `api_key`, etc.).
+
+## Notes about Connectors
+
+- Real connector wrappers are availability-aware and degrade safely when dependencies are missing.
+- `MockConnector` is the recommended default for tests and CI.
+- Module 2 validation is "mixed strict": it tries network data first, then deterministic local fallback.
 
 ## Roadmap
 
-- Module 2: Indicator engine consuming `DataRepository.get_ohlcv(...)`.
-- Broader production-grade implementations for MT5/IQOption/IOL/FXPro/TradingView/NinjaTrader.
-- Postgres production store implementation.
+- Module 3: Signals and ensemble scoring
+- Module 4: Fundamental/news deep integration
+- Module 5: Risk engine
+- Module 6: OMS/execution adapters
+- Module 7+: paper/live/backtest/UI expansion
 
-## Contribucion / Contributing
+## License
 
-1. Create a feature branch.
-2. Keep type hints and tests updated.
-3. Run quality checks before PR.
-4. Prefer mock-first tests for connector behavior.
-
-## Licencia / License
-
-Private/internal project by default (set your license policy before publishing).
+Private/internal by default. Define your public license policy before publishing.

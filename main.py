@@ -11,7 +11,8 @@ from pathlib import Path
 
 from core.config_loader import load_config
 from core.event_bus import EventBus
-from core.events import SystemStartEvent, SystemStopEvent
+from core.event_types import EventType
+from core.events import BarCloseEvent, BaseEvent, SystemStartEvent, SystemStopEvent
 from core.logger import configure_logging, get_logger
 from core.plugin_manager import discover_strategies, load_strategy
 from core.snapshot_manager import SnapshotManager
@@ -26,6 +27,8 @@ from data.connectors.ninjatrader_connector import NinjaTraderConnector
 from data.connectors.tradingview_connector import TradingViewConnector
 from data.feed_manager import FeedManager
 from data.normalizer import Normalizer
+from indicators.indicator_engine import IndicatorEngine
+from regime.regime_detector import RegimeDetector
 
 
 def parse_args() -> argparse.Namespace:
@@ -65,6 +68,8 @@ async def run(smoke_seconds: int | None = None) -> int:
     shutdown_event = asyncio.Event()
     strategies = []
     feed_manager: FeedManager | None = None
+    indicator_engine: IndicatorEngine | None = None
+    regime_detector: RegimeDetector | None = None
 
     def _trigger_shutdown() -> None:
         shutdown_event.set()
@@ -102,6 +107,31 @@ async def run(smoke_seconds: int | None = None) -> int:
         )
         await feed_manager.start()
         log.info("data_layer_started", connectors=len(connectors))
+
+        indicator_engine = IndicatorEngine(
+            data_repository=feed_manager.get_repository(),
+            cache_enabled=config.indicators.indicator_engine.cache_enabled,
+            cache_ttl_seconds=config.indicators.indicator_engine.cache_ttl_seconds,
+            max_lookback_bars=config.indicators.indicator_engine.max_lookback_bars,
+            backend_preference=config.indicators.indicator_engine.backend_preference.value,
+        )
+
+        if config.indicators.regime.enabled:
+            regime_detector = RegimeDetector(
+                indicator_engine=indicator_engine,
+                data_repository=feed_manager.get_repository(),
+                event_bus=event_bus,
+                config=config.indicators.regime,
+                run_id=run_id,
+            )
+
+            @event_bus.subscribe(EventType.BAR_CLOSE)
+            async def _on_bar_close(event: BaseEvent) -> None:
+                if not isinstance(event, BarCloseEvent):
+                    return
+                await regime_detector.detect_on_bar_close(event)
+
+            log.info("regime_detector_enabled")
     else:
         log.info("data_layer_skipped", reason="no_enabled_data_connectors")
 

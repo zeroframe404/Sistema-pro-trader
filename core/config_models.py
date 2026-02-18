@@ -1,4 +1,4 @@
-"""Configuration models for the trading core."""
+﻿"""Configuration models for the trading core."""
 
 from __future__ import annotations
 
@@ -30,6 +30,16 @@ class EventBusBackendType(StrEnum):
 
     ASYNCIO = "asyncio"
     REDIS = "redis"
+
+
+class IndicatorBackendPreference(StrEnum):
+    """Preferred indicator backend."""
+
+    AUTO = "auto"
+    TALIB = "talib"
+    PANDAS_TA = "pandas_ta"
+    TA = "ta"
+    CUSTOM = "custom"
 
 
 class SystemConfig(BaseModel):
@@ -73,13 +83,82 @@ class StrategyConfig(BaseModel):
     version_hash: str | None = None
 
 
+class IndicatorSpec(BaseModel):
+    """One indicator declaration in YAML."""
+
+    id: str
+    params: dict[str, object] = Field(default_factory=dict)
+    enabled: bool = True
+
+
+class IndicatorGroupsConfig(BaseModel):
+    """Indicator groups by analytic domain."""
+
+    trend: list[IndicatorSpec] = Field(default_factory=list)
+    momentum: list[IndicatorSpec] = Field(default_factory=list)
+    volatility: list[IndicatorSpec] = Field(default_factory=list)
+    volume: list[IndicatorSpec] = Field(default_factory=list)
+    patterns: list[IndicatorSpec] = Field(default_factory=list)
+
+
+class IndicatorProfileOverride(IndicatorGroupsConfig):
+    """Per-profile indicator override block."""
+
+    enabled: bool = True
+
+
+class IndicatorEngineConfig(BaseModel):
+    """Runtime settings for indicator engine."""
+
+    cache_enabled: bool = True
+    cache_ttl_seconds: int = Field(default=60, ge=1)
+    max_lookback_bars: int = Field(default=1000, ge=50)
+    backend_preference: IndicatorBackendPreference = IndicatorBackendPreference.AUTO
+
+
+class RegimeConfig(BaseModel):
+    """Runtime settings for market regime detection."""
+
+    enabled: bool = True
+    min_bars_for_detection: int = Field(default=100, ge=20)
+    hurst_lags: dict[str, int] = Field(default_factory=lambda: {"min": 2, "max": 20})
+    adx_trending_threshold: float = 25.0
+    adx_ranging_threshold: float = 20.0
+    atr_lookback_bars: int = Field(default=200, ge=50)
+    spread_spike_multiplier: float = Field(default=3.0, ge=1.0)
+    news_window_minutes_before: int = Field(default=30, ge=0)
+    news_window_minutes_after: int = Field(default=15, ge=0)
+    regime_change_cooldown_bars: int = Field(default=3, ge=0)
+
+
+class IndicatorsConfig(BaseModel):
+    """Merged indicator and regime configuration."""
+
+    indicator_engine: IndicatorEngineConfig = Field(default_factory=IndicatorEngineConfig)
+    defaults: IndicatorGroupsConfig = Field(default_factory=IndicatorGroupsConfig)
+    overrides: dict[str, IndicatorProfileOverride] = Field(default_factory=dict)
+    regime: RegimeConfig = Field(default_factory=RegimeConfig)
+
+
 class RootConfig(BaseModel):
     """Root merged configuration."""
 
     system: SystemConfig
     brokers: list[BrokerConfig] = Field(default_factory=list)
     strategies: list[StrategyConfig] = Field(default_factory=list)
+    indicators: IndicatorsConfig = Field(default_factory=IndicatorsConfig)
 
 
-for model in (SystemConfig, BrokerConfig, StrategyConfig, RootConfig):
+for model in (
+    SystemConfig,
+    BrokerConfig,
+    StrategyConfig,
+    IndicatorSpec,
+    IndicatorGroupsConfig,
+    IndicatorProfileOverride,
+    IndicatorEngineConfig,
+    RegimeConfig,
+    IndicatorsConfig,
+    RootConfig,
+):
     model.model_config = {"extra": "forbid"}

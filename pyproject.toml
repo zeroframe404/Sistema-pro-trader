@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "auto-trading-pro"
 version = "0.1.0"
-description = "Auto Trading Pro core foundation and data layer"
+description = "Auto Trading Pro core foundation, data layer, and indicator/regime engine"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -29,6 +29,18 @@ data = [
   "pytz>=2024.1",
   "tenacity>=8.3,<10",
   "cachetools>=5.3,<7",
+]
+indicators = [
+  "numpy>=1.26,<3",
+  "pandas-ta>=0.3.14b0,<0.4",
+  "ta>=0.11,<0.12",
+  "scipy>=1.13,<2",
+  "statsmodels>=0.14,<0.15",
+]
+validation = [
+  "matplotlib>=3.9,<4",
+  "plotly>=5.22,<7",
+  "yfinance>=0.2,<1",
 ]
 parquet = [
   "pyarrow>=16,<18",
@@ -60,7 +72,21 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 
 [tool.setuptools]
-packages = ["core", "strategies", "data", "data.connectors", "storage"]
+packages = [
+  "core",
+  "strategies",
+  "data",
+  "data.connectors",
+  "storage",
+  "indicators",
+  "indicators.trend",
+  "indicators.momentum",
+  "indicators.volatility",
+  "indicators.volume",
+  "indicators.patterns",
+  "indicators.custom",
+  "regime",
+]
 
 [tool.ruff]
 target-version = "py311"
@@ -69,6 +95,10 @@ line-length = 100
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "N"]
 ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/*.py" = ["E402"]
+"tests/validation/*.py" = ["E402"]
 
 [tool.mypy]
 python_version = "3.11"
@@ -108,3 +138,12 @@ module = [
   "iqoptionapi.*",
 ]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+  "indicators",
+  "indicators.*",
+  "regime",
+  "regime.*",
+]
+ignore_errors = true

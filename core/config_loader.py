@@ -47,6 +47,7 @@ def save_config(config: RootConfig, path: Path) -> None:
         _write_yaml(path / "system.yaml", {"system": payload["system"]})
         _write_yaml(path / "brokers.yaml", {"brokers": payload["brokers"]})
         _write_yaml(path / "strategies.yaml", {"strategies": payload["strategies"]})
+        _write_yaml(path / "indicators.yaml", {"indicators": payload["indicators"]})
         return
 
     _write_yaml(path, payload)
@@ -103,7 +104,7 @@ def _load_raw_data(path: Path) -> dict[str, Any]:
 
 def _load_from_directory(config_dir: Path) -> dict[str, Any]:
     merged: dict[str, Any] = {}
-    files = ("system.yaml", "brokers.yaml", "strategies.yaml")
+    files = ("system.yaml", "brokers.yaml", "strategies.yaml", "indicators.yaml")
 
     for file_name in files:
         file_path = config_dir / file_name

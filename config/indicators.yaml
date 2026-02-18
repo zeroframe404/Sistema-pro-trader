@@ -1,0 +1,85 @@
+﻿indicators:
+  indicator_engine:
+    cache_enabled: true
+    cache_ttl_seconds: 60
+    max_lookback_bars: 1000
+    backend_preference: auto
+
+  defaults:
+    trend:
+      - id: EMA
+        params: {period: 20, price_field: close}
+      - id: EMA
+        params: {period: 50, price_field: close}
+      - id: EMA
+        params: {period: 200, price_field: close}
+      - id: ADX
+        params: {period: 14}
+      - id: SuperTrend
+        params: {atr_period: 10, multiplier: 3.0}
+    momentum:
+      - id: RSI
+        params: {period: 14}
+      - id: MACD
+        params: {fast: 12, slow: 26, signal: 9}
+      - id: Stochastic
+        params: {k_period: 14, d_period: 3}
+    volatility:
+      - id: ATR
+        params: {period: 14}
+      - id: BollingerBands
+        params: {period: 20, std_dev: 2.0}
+    volume:
+      - id: OBV
+      - id: VWAP
+    patterns:
+      - id: CandlestickPatterns
+      - id: SupportResistance
+        params: {method: fractal, min_touches: 2, lookback: 100}
+
+  overrides:
+    forex:
+      volume:
+        - id: OBV
+          enabled: false
+
+    binary_option:
+      momentum:
+        - id: RSI
+          params: {period: 7}
+        - id: Stochastic
+          params: {k_period: 5, d_period: 3}
+      trend:
+        - id: EMA
+          params: {period: 5}
+        - id: EMA
+          params: {period: 10}
+
+    crypto:
+      volume:
+        - id: VWAP
+        - id: OBV
+        - id: CMF
+        - id: VolumeProfile
+          params: {bins: 20}
+
+    fixed_term:
+      enabled: false
+    caution:
+      enabled: false
+    mutual_fund:
+      enabled: false
+    auction:
+      enabled: false
+
+  regime:
+    enabled: true
+    min_bars_for_detection: 100
+    hurst_lags: {min: 2, max: 20}
+    adx_trending_threshold: 25
+    adx_ranging_threshold: 20
+    atr_lookback_bars: 200
+    spread_spike_multiplier: 3.0
+    news_window_minutes_before: 30
+    news_window_minutes_after: 15
+    regime_change_cooldown_bars: 3

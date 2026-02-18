@@ -186,3 +186,8 @@ class FeedManager:
             except Exception:  # noqa: BLE001
                 results[connector.connector_id] = False
         return results
+
+    def get_repository(self) -> DataRepository:
+        """Expose the shared data repository for analytical modules."""
+
+        return self._repository
