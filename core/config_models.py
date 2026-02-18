@@ -42,6 +42,7 @@ class SystemConfig(BaseModel):
     redis_url: str | None = None
     snapshot_interval_seconds: int = Field(default=300, ge=1)
     timezone: str = "UTC"
+    data_store_path: str = "./data_store"
 
     @model_validator(mode="after")
     def ensure_run_id(self) -> SystemConfig:
@@ -57,6 +58,7 @@ class BrokerConfig(BaseModel):
     broker_type: str
     enabled: bool
     paper_mode: bool
+    extra: dict[str, object] = Field(default_factory=dict)
 
 
 class StrategyConfig(BaseModel):

@@ -1,1 +1,37 @@
-brokers: []
+brokers:
+  - broker_id: mt5_main
+    broker_type: mt5
+    enabled: false
+    paper_mode: true
+    extra:
+      mt5_path: "C:/Program Files/MetaTrader 5/terminal64.exe"
+      server: "ICMarkets-Demo"
+
+  - broker_id: iqoption_practice
+    broker_type: iqoption
+    enabled: false
+    paper_mode: true
+    extra:
+      account_type: practice
+
+  - broker_id: iol_main
+    broker_type: iol
+    enabled: false
+    paper_mode: false
+    extra: {}
+
+  - broker_id: binance_spot
+    broker_type: ccxt
+    enabled: false
+    paper_mode: true
+    extra:
+      exchange: binance
+      sandbox: true
+
+  - broker_id: mock_dev
+    broker_type: mock
+    enabled: true
+    paper_mode: true
+    extra:
+      latency_ms: 50
+      error_rate: 0.01

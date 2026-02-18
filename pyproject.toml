@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "auto-trading-pro"
 version = "0.1.0"
-description = "Auto Trading Pro core foundation"
+description = "Auto Trading Pro core foundation and data layer"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -18,9 +18,36 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+data = [
+  "polars>=0.20,<1",
+  "pandas>=2.2,<3",
+  "httpx>=0.27,<1",
+  "websockets>=12,<16",
+  "aiohttp>=3.9,<4",
+  "python-dotenv>=1.0,<2",
+  "tzdata>=2024.1",
+  "pytz>=2024.1",
+  "tenacity>=8.3,<10",
+  "cachetools>=5.3,<7",
+]
+parquet = [
+  "pyarrow>=16,<18",
+  "fastparquet>=2024.2,<2026",
+]
+storage = [
+  "sqlalchemy>=2.0,<3",
+  "aiosqlite>=0.20,<1",
+  "asyncpg>=0.29,<1",
+]
+connectors = [
+  "ccxt>=4.3,<5",
+]
 dev = [
   "pytest>=8.0,<9",
   "pytest-asyncio>=0.23,<1",
+  "pytest-mock>=3.14,<4",
+  "respx>=0.21,<1",
+  "freezegun>=1.5,<2",
   "mypy>=1.10,<2",
   "ruff>=0.5,<1",
 ]
@@ -33,7 +60,7 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 
 [tool.setuptools]
-packages = ["core", "strategies"]
+packages = ["core", "strategies", "data", "data.connectors", "storage"]
 
 [tool.ruff]
 target-version = "py311"
@@ -51,3 +78,33 @@ disallow_untyped_defs = true
 check_untyped_defs = true
 strict_optional = true
 exclude = ["tests/"]
+
+[[tool.mypy.overrides]]
+module = [
+  "yaml",
+  "aiofiles",
+  "watchfiles",
+  "polars",
+  "pandas",
+  "pyarrow",
+  "fastparquet",
+  "cachetools",
+  "aiosqlite",
+  "asyncpg",
+  "sqlalchemy",
+  "sqlalchemy.*",
+  "httpx",
+  "aiohttp",
+  "websockets",
+  "dotenv",
+  "pytz",
+  "tenacity",
+  "redis",
+  "redis.*",
+  "ccxt",
+  "ccxt.*",
+  "MetaTrader5",
+  "iqoptionapi",
+  "iqoptionapi.*",
+]
+ignore_missing_imports = true

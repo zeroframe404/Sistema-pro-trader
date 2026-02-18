@@ -5,3 +5,4 @@ system:
   redis_url: null
   snapshot_interval_seconds: 300
   timezone: UTC
+  data_store_path: ./data_store
