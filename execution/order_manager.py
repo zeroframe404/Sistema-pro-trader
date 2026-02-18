@@ -174,7 +174,6 @@ class OrderManager:
     async def close_position(self, position: Position, reason: str, partial_pct: float = 1.0) -> Order:
         """Submit a close order for an open position."""
 
-        broker_order_id = await self._adapter.close_position(position, partial_pct=partial_pct)
         close_side = OrderSide.SELL if position.side == OrderSide.BUY else OrderSide.BUY
         close_order = Order(
             client_order_id=f"close-{position.position_id}-{int(datetime.now(UTC).timestamp())}",
@@ -190,15 +189,31 @@ class OrderManager:
             take_profit=None,
             trailing_stop=None,
             time_in_force="IOC",
-            status=OrderStatus.SUBMITTED,
-            submitted_at=datetime.now(UTC),
+            status=OrderStatus.PENDING,
             is_paper=self._adapter.is_paper,
-            broker_order_id=broker_order_id,
             metadata={"close_position_id": position.position_id, "reason": reason, **position.metadata},
         )
-        self._register_order(close_order)
-        await self._persist_order(close_order)
-        return close_order
+        async with self._lock:
+            self._register_order(close_order)
+        broker_order_id = await self._retry.run(lambda: self._adapter.submit_order(close_order))
+        current_order = self._orders.get(close_order.order_id, close_order)
+        current_status = current_order.status
+        final_status = (
+            current_status
+            if current_status in {OrderStatus.FILLED, OrderStatus.PARTIALLY_FILLED}
+            else OrderStatus.SUBMITTED
+        )
+        submitted = current_order.model_copy(
+            update={
+                "broker_order_id": broker_order_id,
+                "status": final_status,
+                "submitted_at": current_order.submitted_at or datetime.now(UTC),
+            }
+        )
+        async with self._lock:
+            self._register_order(submitted)
+        await self._persist_order(submitted)
+        return submitted
 
     async def close_all_positions(self, reason: str) -> list[Order]:
         """Close all currently open positions."""
@@ -240,7 +255,11 @@ class OrderManager:
 
             close_position_id = str(updated_order.metadata.get("close_position_id", ""))
             if close_position_id:
-                await self._apply_close_fill(close_position_id, fill)
+                await self._apply_close_fill(
+                    close_position_id,
+                    fill,
+                    reason=str(updated_order.metadata.get("reason", "close")),
+                )
             else:
                 await self._apply_open_fill(updated_order, fill)
 
@@ -266,6 +285,20 @@ class OrderManager:
     def get_order_history(self, limit: int = 100) -> list[Order]:
         """Return latest order history."""
 
+        return self._history[-limit:]
+
+    def get_positions(self, include_closed: bool = False) -> list[Position]:
+        """Return tracked positions, optionally including closed ones."""
+
+        if include_closed:
+            return list(self._positions.values())
+        return [item for item in self._positions.values() if item.status != PositionStatus.CLOSED]
+
+    def get_orders(self, limit: int | None = None) -> list[Order]:
+        """Return tracked orders in insertion order."""
+
+        if limit is None:
+            return list(self._history)
         return self._history[-limit:]
 
     def get_account(self) -> Account:
@@ -310,6 +343,11 @@ class OrderManager:
                 "contract_size": float(signal.metadata.get("contract_size", 1.0)),
                 "pip_size": float(signal.metadata.get("pip_size", 0.0001)),
                 "account_equity": float(signal.metadata.get("account_equity", 0.0)),
+                "requested_quantity": max(float(risk_check.approved_size or 0.0), 0.0),
+                "signal_confidence": signal.confidence,
+                "regime_trend": str(signal.metadata.get("regime_trend", "unknown")),
+                "regime_volatility": str(signal.metadata.get("regime_volatility", "unknown")),
+                "timeframe": str(signal.timeframe),
             },
         )
 
@@ -344,7 +382,7 @@ class OrderManager:
         self._positions[position.position_id] = position
         await self._persist_position(position)
 
-    async def _apply_close_fill(self, position_id: str, fill: Fill) -> None:
+    async def _apply_close_fill(self, position_id: str, fill: Fill, reason: str = "close") -> None:
         position = self._positions.get(position_id)
         if position is None:
             return
@@ -359,6 +397,7 @@ class OrderManager:
             position.status = PositionStatus.CLOSED
             position.closed_at = fill.timestamp
             position.close_price = fill.price
+            position.metadata["exit_reason"] = reason
         await self._risk_manager.update_on_close(position, realized)
         await self._persist_position(position)
 

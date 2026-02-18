@@ -1,0 +1,49 @@
+backtest:
+  default_initial_capital: 10000.0
+  default_currency: "USD"
+  use_realistic_fills: true
+  warmup_bars: 200
+  random_seed: 42
+
+  walk_forward:
+    train_periods: 12
+    test_periods: 3
+    step_periods: 3
+    min_windows: 3
+
+  out_of_sample:
+    oos_pct: 0.20
+    purge_bars: 10
+    embargo_bars: 5
+
+  optimizer:
+    n_trials: 100
+    n_jobs: 1
+    default_metric: "sharpe_ratio"
+    lambda_complexity: 0.05
+    mu_instability: 0.10
+    max_params_to_optimize: 6
+
+  viability_thresholds:
+    min_profit_factor: 1.30
+    min_sharpe_ratio: 0.80
+    max_drawdown_pct: 25.0
+    min_win_rate: 0.40
+    min_trades: 30
+
+  report:
+    output_dir: "reports"
+    generate_html: true
+    generate_pdf: true
+    embed_charts: true
+    include_all_trades: true
+
+replay:
+  default_speed: 1.0
+  default_warmup_bars: 200
+  save_replay_session: false
+
+shadow:
+  enabled: false
+  log_all_signals: true
+  compare_with_live_interval_minutes: 60

@@ -57,6 +57,9 @@ class _EventBusBackend(Protocol):
     async def stop(self) -> None:
         ...
 
+    async def drain(self, timeout_seconds: float | None = None) -> None:
+        ...
+
     def get_metrics(self) -> EventBusMetrics:
         ...
 
@@ -106,6 +109,15 @@ class AsyncioBackend:
             except asyncio.CancelledError:
                 pass
             self._worker_task = None
+
+    async def drain(self, timeout_seconds: float | None = None) -> None:
+        if timeout_seconds is None:
+            await self._queue.join()
+            return
+        try:
+            await asyncio.wait_for(self._queue.join(), timeout=timeout_seconds)
+        except TimeoutError:
+            self._logger.warning("Event bus drain timed out", extra={"timeout_seconds": timeout_seconds})
 
     def get_metrics(self) -> EventBusMetrics:
         return EventBusMetrics(
@@ -186,6 +198,9 @@ class RedisBackend:
 
     async def stop(self) -> None:
         await self._fallback.stop()
+
+    async def drain(self, timeout_seconds: float | None = None) -> None:
+        await self._fallback.drain(timeout_seconds=timeout_seconds)
 
     def get_metrics(self) -> EventBusMetrics:
         metrics = self._fallback.get_metrics()
@@ -270,6 +285,11 @@ class EventBus:
         """Stop event bus lifecycle."""
 
         await self._backend.stop()
+
+    async def drain(self, timeout_seconds: float | None = None) -> None:
+        """Wait until queued events have been processed."""
+
+        await self._backend.drain(timeout_seconds=timeout_seconds)
 
     def get_metrics(self) -> EventBusMetrics:
         """Return runtime event bus metrics."""

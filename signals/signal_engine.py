@@ -125,12 +125,13 @@ class SignalEngine:
         timeframe: str,
         horizon: str,
         asset_class: AssetClass | None = None,
+        as_of: datetime | None = None,
     ) -> DecisionResult:
         """Run full analysis pipeline for one symbol/timeframe."""
 
         lookback_bars = self._config.engine.default_lookback_bars
         tf_seconds = self._resampler.get_timeframe_seconds(timeframe)
-        end = datetime.now(UTC)
+        end = as_of.astimezone(UTC) if as_of is not None else datetime.now(UTC)
         start = end - timedelta(seconds=tf_seconds * lookback_bars)
 
         bars = await self._data_repository.get_ohlcv(
@@ -224,6 +225,7 @@ class SignalEngine:
         broker: str,
         timeframes: list[str],
         horizon: str,
+        as_of: datetime | None = None,
     ) -> dict[str, DecisionResult]:
         """Analyze one symbol across multiple timeframes."""
 
@@ -234,6 +236,7 @@ class SignalEngine:
                 broker=broker,
                 timeframe=timeframe,
                 horizon=horizon,
+                as_of=as_of,
             )
         return results
 
@@ -247,6 +250,7 @@ class SignalEngine:
             broker=event.broker,
             timeframe=event.timeframe,
             horizon=self._config.horizon.default_horizon,
+            as_of=event.timestamp_close,
         )
 
     async def get_decision_for_user(

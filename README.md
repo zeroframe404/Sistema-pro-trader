@@ -23,6 +23,11 @@ Multi-broker, multi-asset, event-driven automated trading platform.
 - Gestion de riesgo institucional: position sizing (fixed, percent_risk, ATR, Kelly), drawdown limits y kill switch.
 - OMS completo: ciclo de vida de orden, idempotencia, retry y reconciliacion broker vs estado interno.
 - Paper trading production-ready: misma API de execution con fills simulados, slippage y comisiones configurables.
+- Backtesting serio: walk-forward analysis, validacion OOS con purging/embargo y sin look-ahead bias.
+- Optimizacion de parametros con score penalizado anti-overfit.
+- Market replay a velocidad controlada para debugging historico.
+- Shadow mode para validar decisiones en paralelo sin enviar ordenes reales.
+- Reportes completos HTML/PDF con equity, drawdown, metrics y MAE/MFE.
 
 ## Module Status
 
@@ -31,6 +36,7 @@ Multi-broker, multi-asset, event-driven automated trading platform.
 - Module 2: Indicators + Regime - Complete
 - Module 3: Signal Engine - Complete
 - Module 4: Risk + OMS - Complete
+- Module 5: Backtesting + Replay + Shadow - Complete
 
 ## Architecture
 
@@ -106,6 +112,15 @@ python scripts/run_module4_demo.py --scenario all
 
 ```bash
 python main.py --smoke-seconds 8
+```
+
+5. Module 5:
+
+```bash
+python scripts/run_backtest.py --strategy trend_following --symbol EURUSD --timeframe H1 --start 2023-01-01 --end 2024-01-01
+python scripts/run_backtest.py --strategy trend_following --symbol EURUSD --timeframe H1 --start 2022-01-01 --end 2024-01-01 --mode walk_forward
+python scripts/run_optimization.py --strategy trend_following --symbol EURUSD --timeframe H1 --start 2023-01-01 --end 2024-01-01 --params "rsi_period=7:30:1,ema_fast=5:50:5" --n-trials 25
+python scripts/run_module5_demo.py --scenario all
 ```
 
 ## Motor de Senales
@@ -199,6 +214,67 @@ Garantias del OMS:
 - Reconciliacion periodica broker vs estado interno.
 - Paper trading 1:1 con live a nivel API.
 
+## Backtesting
+
+### CLI rapida
+
+```bash
+# Backtest simple
+python scripts/run_backtest.py --strategy trend_following --symbol EURUSD --timeframe H1 --start 2023-01-01 --end 2024-01-01
+
+# Walk-forward
+python scripts/run_backtest.py --strategy trend_following --symbol EURUSD --timeframe H1 --start 2022-01-01 --end 2024-01-01 --mode walk_forward
+
+# Out-of-sample
+python scripts/run_backtest.py --strategy mean_reversion --symbol BTCUSD --timeframe H1 --start 2022-01-01 --end 2024-01-01 --mode out_of_sample
+
+# Optimization
+python scripts/run_optimization.py --strategy trend_following --symbol EURUSD --timeframe H1 --start 2023-01-01 --end 2024-01-01 --params "rsi_period=7:30:1,ema_fast=5:50:5" --n-trials 25
+```
+
+### Metrics thresholds
+
+| Metric | Description | Minimum |
+|---|---|---|
+| Profit Factor | gross_profit / gross_loss | > 1.30 |
+| Sharpe Ratio | annualized risk-adjusted return | > 0.80 |
+| Sortino Ratio | downside-risk-adjusted return | > 1.00 |
+| Max Drawdown | peak-to-trough drop | < 25% |
+| Calmar Ratio | CAGR / max_drawdown | > 1.00 |
+| Ulcer Index | drawdown stress | < 5.0 |
+| Expectancy | expected PnL per trade | > 0 |
+| Win Rate | winner trades % | > 40% |
+
+### Anti-overfitting
+
+- Walk-forward rolling train/test windows.
+- OOS split with purge/embargo between IS and OOS.
+- Penalized optimizer score by complexity and instability.
+- Degradation score tracks test_sharpe / train_sharpe.
+
+### Market replay
+
+```python
+replayer = MarketReplayer(...)
+await replayer.start(
+    symbol="EURUSD",
+    broker="mock_dev",
+    timeframe="H1",
+    start=datetime(2024, 1, 1, tzinfo=UTC),
+    end=datetime(2024, 1, 8, tzinfo=UTC),
+    speed=100.0,
+)
+```
+
+### Shadow mode
+
+```python
+shadow = ShadowMode(signal_engine, risk_manager, fill_simulator, event_bus, logger)
+await shadow.start()
+metrics = shadow.get_shadow_metrics()
+comparison = shadow.compare_with_live(live_trades)
+```
+
 ## Quality and Validation
 
 Static checks:
@@ -243,7 +319,7 @@ python tests/validation/generate_validation_charts.py
 - Module 2: Indicators + Regime - Complete
 - Module 3: Signal Engine - Complete
 - Module 4: Risk + OMS - Complete
-- Module 5: Portfolio/Backoffice Extensions - Planned
+- Module 5: Backtesting + Replay + Shadow - Complete
 - Module 6+: Paper/Live/Backtest/UI expansion - Planned
 
 ## Contributing

@@ -1,1 +1,1 @@
--e .[dev,data,parquet,storage,connectors,watch,indicators,validation,signals]
+-e .[dev,data,parquet,storage,connectors,watch,indicators,validation,signals,backtest]

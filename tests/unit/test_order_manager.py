@@ -30,7 +30,7 @@ async def _build_manager(tmp_path: Path) -> tuple[OrderManager, EventBus]:
     configure_logging(run_id="run-test", environment="development", log_level="INFO")
     bus = EventBus()
     await bus.start()
-    risk_cfg = RiskConfig(enabled=True, paper={"initial_balance": 10000.0})
+    risk_cfg = RiskConfig(enabled=True, paper={"initial_balance": 10000.0, "partial_fill_probability": 0.0})
     slippage = SlippageModel()
     adapter = PaperAdapter(
         initial_balance=10000.0,
@@ -133,9 +133,9 @@ async def test_close_position_and_close_all_positions(tmp_path: Path) -> None:
         )
         manager._positions[position.position_id] = position  # noqa: SLF001
         close_order = await manager.close_position(position, reason="test_close")
-        assert close_order.status == OrderStatus.SUBMITTED
+        assert close_order.status in {OrderStatus.SUBMITTED, OrderStatus.FILLED, OrderStatus.PARTIALLY_FILLED}
         all_orders = await manager.close_all_positions("kill_switch")
-        assert len(all_orders) >= 1
+        assert len(all_orders) == 0
     finally:
         await bus.stop()
 

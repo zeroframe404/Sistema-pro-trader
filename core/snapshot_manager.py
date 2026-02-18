@@ -30,8 +30,14 @@ class SnapshotManager:
         """Persist one snapshot to disk and enforce retention."""
 
         now = datetime.now(UTC)
-        snapshot_id = now.strftime("%Y%m%dT%H%M%S%fZ")
+        base_snapshot_id = now.strftime("%Y%m%dT%H%M%S%fZ")
+        snapshot_id = base_snapshot_id
         path = self._snapshot_dir / f"snapshot_{snapshot_id}.json"
+        collision_index = 1
+        while path.exists():
+            snapshot_id = f"{base_snapshot_id}_{collision_index:02d}"
+            path = self._snapshot_dir / f"snapshot_{snapshot_id}.json"
+            collision_index += 1
 
         payload = {
             "snapshot_id": snapshot_id,

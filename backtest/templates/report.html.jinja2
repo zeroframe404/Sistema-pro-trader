@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Backtest Report</title>
+  <link rel="stylesheet" href="report_assets/style.css" />
+</head>
+<body>
+  <header>
+    <h1>Backtest Report</h1>
+    <p class="verdict" style="color: {{ verdict_color }};">{{ verdict_text }}</p>
+    <p>Run ID: <code>{{ result.config.run_id }}</code></p>
+    <p>Strategies: {{ result.config.strategy_ids | join(", ") }}</p>
+    <p>Symbols: {{ result.config.symbols | join(", ") }}</p>
+    <p>Period: {{ result.config.start_date.isoformat() }} -> {{ result.config.end_date.isoformat() }}</p>
+  </header>
+
+  <section>
+    <h2>Metrics</h2>
+    <table>
+      <tr><th>Total trades</th><td>{{ metrics.total_trades }}</td></tr>
+      <tr><th>Win rate</th><td>{{ "%.2f"|format(metrics.win_rate * 100) }}%</td></tr>
+      <tr><th>Profit factor</th><td>{{ "%.3f"|format(metrics.profit_factor) }}</td></tr>
+      <tr><th>Sharpe ratio</th><td>{{ "%.3f"|format(metrics.sharpe_ratio) }}</td></tr>
+      <tr><th>Sortino ratio</th><td>{{ "%.3f"|format(metrics.sortino_ratio) }}</td></tr>
+      <tr><th>Max drawdown</th><td>{{ "%.2f"|format(metrics.max_drawdown_pct) }}%</td></tr>
+      <tr><th>Expectancy</th><td>{{ "%.2f"|format(metrics.expectancy) }}</td></tr>
+      <tr><th>Ulcer index</th><td>{{ "%.3f"|format(metrics.ulcer_index) }}</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>Charts (JSON)</h2>
+    <div class="chart-block">
+      <h3>Equity</h3>
+      <pre>{{ equity_chart }}</pre>
+    </div>
+    <div class="chart-block">
+      <h3>Drawdown</h3>
+      <pre>{{ drawdown_chart }}</pre>
+    </div>
+    <div class="chart-block">
+      <h3>Monthly Returns</h3>
+      <pre>{{ monthly_returns_chart }}</pre>
+    </div>
+    <div class="chart-block">
+      <h3>MAE/MFE</h3>
+      <pre>{{ mae_mfe_chart }}</pre>
+    </div>
+  </section>
+
+  <section>
+    <h2>Trades</h2>
+    <pre>{{ trades_json }}</pre>
+  </section>
+
+  <script>
+    window.plotly = "plotly";
+  </script>
+</body>
+</html>
