@@ -42,6 +42,12 @@ validation = [
   "plotly>=5.22,<7",
   "yfinance>=0.2,<1",
 ]
+signals = [
+  "scikit-learn>=1.5,<2",
+  "joblib>=1.4,<2",
+  "vectorbt>=0.26,<0.27",
+  "python-telegram-bot>=21,<22",
+]
 parquet = [
   "pyarrow>=16,<18",
   "fastparquet>=2024.2,<2026",
@@ -86,6 +92,9 @@ packages = [
   "indicators.patterns",
   "indicators.custom",
   "regime",
+  "signals",
+  "signals.strategies",
+  "signals.filters",
 ]
 
 [tool.ruff]
@@ -138,12 +147,3 @@ module = [
   "iqoptionapi.*",
 ]
 ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-module = [
-  "indicators",
-  "indicators.*",
-  "regime",
-  "regime.*",
-]
-ignore_errors = true

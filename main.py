@@ -9,6 +9,7 @@ import signal
 from collections.abc import Callable
 from pathlib import Path
 
+from core.audit_journal import AuditJournal
 from core.config_loader import load_config
 from core.event_bus import EventBus
 from core.event_types import EventType
@@ -29,6 +30,7 @@ from data.feed_manager import FeedManager
 from data.normalizer import Normalizer
 from indicators.indicator_engine import IndicatorEngine
 from regime.regime_detector import RegimeDetector
+from signals.signal_engine import SignalEngine
 
 
 def parse_args() -> argparse.Namespace:
@@ -70,6 +72,7 @@ async def run(smoke_seconds: int | None = None) -> int:
     feed_manager: FeedManager | None = None
     indicator_engine: IndicatorEngine | None = None
     regime_detector: RegimeDetector | None = None
+    signal_engine: SignalEngine | None = None
 
     def _trigger_shutdown() -> None:
         shutdown_event.set()
@@ -132,6 +135,32 @@ async def run(smoke_seconds: int | None = None) -> int:
                 await regime_detector.detect_on_bar_close(event)
 
             log.info("regime_detector_enabled")
+
+        if config.signals.enabled and config.signals.engine.enabled:
+            audit_journal = AuditJournal(
+                jsonl_path=Path(config.system.data_store_path) / "audit_signals.jsonl",
+            )
+            signal_engine = SignalEngine(
+                config=config.signals,
+                indicator_engine=indicator_engine,
+                regime_detector=regime_detector
+                if regime_detector is not None
+                else RegimeDetector(indicator_engine=indicator_engine, data_repository=feed_manager.get_repository(), run_id=run_id),
+                data_repository=feed_manager.get_repository(),
+                event_bus=event_bus,
+                logger=get_logger("signals.engine"),
+                run_id=run_id,
+                audit_journal=audit_journal,
+            )
+            await signal_engine.start()
+
+            @event_bus.subscribe(EventType.BAR_CLOSE)
+            async def _on_signal_bar_close(event: BaseEvent) -> None:
+                if not isinstance(event, BarCloseEvent):
+                    return
+                await signal_engine.on_bar_close(event)
+
+            log.info("signal_engine_enabled")
     else:
         log.info("data_layer_skipped", reason="no_enabled_data_connectors")
 
@@ -171,6 +200,7 @@ async def run(smoke_seconds: int | None = None) -> int:
             "strategies": registry.list_all(),
             "event_bus_metrics": dataclasses.asdict(event_bus.get_metrics()),
             "data_layer_enabled": feed_manager is not None,
+            "active_signals": len(signal_engine.get_active_signals()) if signal_engine is not None else 0,
         }
         snapshot_manager.save_snapshot(snapshot_state)
 

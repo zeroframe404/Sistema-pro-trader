@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from data.models import OHLCVBar
-from indicators._utils import build_indicator_series, empty_series, get_price_series
+from indicators._utils import build_indicator_series, empty_series, get_price_series, param_int
 from indicators.base_indicator import BaseIndicator
 from indicators.indicator_backend import IndicatorBackend
 from indicators.indicator_result import IndicatorSeries
@@ -34,7 +34,7 @@ class _MAIndicator(BaseIndicator):
         return self.period
 
     def _resolve(self, **params: object) -> tuple[int, str]:
-        period = int(params.get("period", self.period))
+        period = param_int(params, "period", self.period)
         price_field = str(params.get("price_field", self.price_field))
         if period <= 0:
             raise ValueError("period must be > 0")

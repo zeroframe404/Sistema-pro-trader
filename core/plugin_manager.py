@@ -9,7 +9,7 @@ import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from core.base_strategy import BaseStrategy
 from core.config_models import StrategyConfig
@@ -84,7 +84,11 @@ def load_strategy(strategy_class_path: str, config: StrategyConfig, event_bus: E
     if not inspect.isclass(strategy_class) or not issubclass(strategy_class, BaseStrategy):
         raise TypeError(f"Class is not a BaseStrategy: {strategy_class_path}")
 
-    strategy = strategy_class(config=config, event_bus=event_bus)
+    factory = getattr(strategy_class, "from_config", None)
+    if callable(factory):
+        strategy = cast(BaseStrategy, factory(config=config, event_bus=event_bus))
+    else:
+        strategy = cast(BaseStrategy, strategy_class(config=config, event_bus=event_bus))
     validate_strategy(strategy)
 
     dataset_id = str(config.parameters.get("dataset_id", "default"))

@@ -7,7 +7,7 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from core.config_loader import load_config, watch_config
+from core.config_loader import load_config, save_config, watch_config
 
 
 def _write_yaml(path: Path, payload: dict) -> None:
@@ -32,6 +32,7 @@ def _make_config_dir(tmp_path: Path) -> Path:
     )
     _write_yaml(config_dir / "brokers.yaml", {"brokers": []})
     _write_yaml(config_dir / "strategies.yaml", {"strategies": []})
+    _write_yaml(config_dir / "signals.yaml", {"signals": {"enabled": True}})
     return config_dir
 
 
@@ -102,3 +103,11 @@ async def test_hot_reload_calls_callback(tmp_path: Path) -> None:
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
         await task
+
+
+def test_save_config_persists_signals_file(tmp_path: Path) -> None:
+    config_dir = _make_config_dir(tmp_path)
+    config = load_config(config_dir)
+    output_dir = tmp_path / "output"
+    save_config(config, output_dir)
+    assert (output_dir / "signals.yaml").exists()

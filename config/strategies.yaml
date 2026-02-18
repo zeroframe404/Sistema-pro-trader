@@ -1,1 +1,16 @@
-strategies: []
+strategies:
+  - strategy_id: trend_following_adapter
+    strategy_class: signals.strategy_adapter.SignalStrategyAdapter
+    enabled: false
+    symbols: [EURUSD, BTCUSD]
+    timeframes: [M15, H1]
+    parameters:
+      wrapped_strategy: trend_following
+
+  - strategy_id: mean_reversion_adapter
+    strategy_class: signals.strategy_adapter.SignalStrategyAdapter
+    enabled: false
+    symbols: [EURUSD, BTCUSD]
+    timeframes: [M5, M15]
+    parameters:
+      wrapped_strategy: mean_reversion

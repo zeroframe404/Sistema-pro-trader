@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from data.models import OHLCVBar
-from indicators._utils import build_indicator_series, empty_series
+from indicators._utils import build_indicator_series, empty_series, param_int
 from indicators.base_indicator import BaseIndicator
 from indicators.indicator_backend import IndicatorBackend
 from indicators.indicator_result import IndicatorSeries
@@ -33,9 +33,9 @@ class MACD(BaseIndicator):
         return self.slow + self.signal
 
     def compute(self, bars: list[OHLCVBar], **params: object) -> IndicatorSeries:
-        fast = int(params.get("fast", self.fast))
-        slow = int(params.get("slow", self.slow))
-        signal = int(params.get("signal", self.signal))
+        fast = param_int(params, "fast", self.fast)
+        slow = param_int(params, "slow", self.slow)
+        signal = param_int(params, "signal", self.signal)
 
         warmup = slow + signal
         if len(bars) < warmup:

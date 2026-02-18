@@ -8,7 +8,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator
 
 from data.models import OHLCVBar
-from indicators._utils import build_indicator_series, empty_series
+from indicators._utils import build_indicator_series, empty_series, param_int
 from indicators.base_indicator import BaseIndicator
 from indicators.indicator_backend import IndicatorBackend
 from indicators.indicator_result import IndicatorSeries
@@ -70,16 +70,23 @@ class SupportResistanceDetector:
             )
 
         if min_touches <= 1:
-            return [
-                SRLevel(
-                    price=price,
-                    strength=1,
-                    type=level_type if level_type in {"support", "resistance"} else "support",
-                    touch_count=1,
-                    last_touch=touched_at,
+            levels: list[SRLevel] = []
+            for price, level_type, touched_at in pivots:
+                sr_type: Literal["support", "resistance"]
+                if level_type == "resistance":
+                    sr_type = "resistance"
+                else:
+                    sr_type = "support"
+                levels.append(
+                    SRLevel(
+                        price=price,
+                        strength=1,
+                        type=sr_type,
+                        touch_count=1,
+                        last_touch=touched_at,
+                    )
                 )
-                for price, level_type, touched_at in pivots
-            ]
+            return levels
 
         return self._cluster_levels(pivots, min_touches=min_touches)
 
@@ -115,16 +122,16 @@ class SupportResistanceDetector:
         clusters: list[list[tuple[float, str, datetime]]] = []
         tolerance = 0.002
 
-        for price, level_type, touched_at in pivots:
+        for price, pivot_type, touched_at in pivots:
             if not clusters:
-                clusters.append([(price, level_type, touched_at)])
+                clusters.append([(price, pivot_type, touched_at)])
                 continue
 
             avg_price = sum(item[0] for item in clusters[-1]) / len(clusters[-1])
             if abs(price - avg_price) / max(avg_price, 1e-9) <= tolerance:
-                clusters[-1].append((price, level_type, touched_at))
+                clusters[-1].append((price, pivot_type, touched_at))
             else:
-                clusters.append([(price, level_type, touched_at)])
+                clusters.append([(price, pivot_type, touched_at)])
 
         levels: list[SRLevel] = []
         for cluster in clusters:
@@ -135,14 +142,18 @@ class SupportResistanceDetector:
             avg_price = sum(item[0] for item in cluster) / touch_count
             supports = sum(1 for item in cluster if item[1] == "support")
             resistances = sum(1 for item in cluster if item[1] == "resistance")
-            level_type = "support" if supports >= resistances else "resistance"
+            sr_type: Literal["support", "resistance"]
+            if supports >= resistances:
+                sr_type = "support"
+            else:
+                sr_type = "resistance"
             strength = max(1, min(10, touch_count))
             last_touch = max(item[2] for item in cluster)
             levels.append(
                 SRLevel(
                     price=avg_price,
                     strength=strength,
-                    type=level_type,
+                    type=sr_type,
                     touch_count=touch_count,
                     last_touch=last_touch,
                 )
@@ -166,8 +177,8 @@ class SupportResistance(BaseIndicator):
 
     def compute(self, bars: list[OHLCVBar], **params: object) -> IndicatorSeries:
         method = str(params.get("method", "fractal"))
-        min_touches = int(params.get("min_touches", 2))
-        lookback = int(params.get("lookback", 100))
+        min_touches = param_int(params, "min_touches", 2)
+        lookback = param_int(params, "lookback", 100)
 
         if len(bars) < self.warmup_period:
             return empty_series(

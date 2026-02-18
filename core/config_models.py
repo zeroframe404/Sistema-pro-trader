@@ -140,6 +140,136 @@ class IndicatorsConfig(BaseModel):
     regime: RegimeConfig = Field(default_factory=RegimeConfig)
 
 
+class SignalEnsembleMethod(StrEnum):
+    """Supported ensemble methods."""
+
+    WEIGHTED_VOTE = "weighted_vote"
+    MAJORITY_VOTE = "majority_vote"
+    UNANIMOUS = "unanimous"
+    BEST_CONFIDENCE = "best_confidence"
+    REGIME_WEIGHTED = "regime_weighted"
+
+
+class SignalEngineConfig(BaseModel):
+    """Core runtime settings for signal engine."""
+
+    enabled: bool = True
+    default_lookback_bars: int = Field(default=500, ge=50)
+    signal_expiry_minutes: int = Field(default=120, ge=1)
+    signal_history_limit: int = Field(default=500, ge=10)
+    emit_on_bar_close: bool = True
+
+
+class SignalStrategyConfig(BaseModel):
+    """One built-in strategy declaration used by signal engine."""
+
+    strategy_id: str
+    enabled: bool = True
+    weight: float = Field(default=1.0, ge=0.0, le=1.0)
+    min_confidence: float = Field(default=0.45, ge=0.0, le=1.0)
+    compatible_asset_classes: list[str] = Field(default_factory=list)
+    compatible_regimes: list[str] = Field(default_factory=list)
+    horizons: list[str] = Field(default_factory=list)
+    params: dict[str, object] = Field(default_factory=dict)
+
+
+class EnsembleConfig(BaseModel):
+    """Ensemble combination settings."""
+
+    method: SignalEnsembleMethod = SignalEnsembleMethod.WEIGHTED_VOTE
+    tie_breaker: SignalEnsembleMethod = SignalEnsembleMethod.REGIME_WEIGHTED
+    wait_threshold: float = Field(default=0.10, ge=0.0, le=1.0)
+    contradiction_threshold: float = Field(default=0.50, ge=0.0, le=1.0)
+
+
+class ConfidenceConfig(BaseModel):
+    """Confidence post-processing penalties and display thresholds."""
+
+    contradiction_penalty: float = Field(default=0.20, ge=0.0, le=1.0)
+    regime_mismatch_penalty: float = Field(default=0.25, ge=0.0, le=1.0)
+    non_trade_penalty: float = Field(default=0.35, ge=0.0, le=1.0)
+    strong_threshold: float = Field(default=0.75, ge=0.0, le=1.0)
+    moderate_threshold: float = Field(default=0.55, ge=0.0, le=1.0)
+    weak_threshold: float = Field(default=0.40, ge=0.0, le=1.0)
+    extreme_volatility_cap: float = Field(default=0.30, ge=0.0, le=1.0)
+    illiquid_cap: float = Field(default=0.20, ge=0.0, le=1.0)
+
+
+class FiltersConfig(BaseModel):
+    """Enable/disable filters and thresholds."""
+
+    regime_filter: bool = True
+    news_filter: bool = True
+    session_filter: bool = True
+    spread_filter: bool = True
+    correlation_filter: bool = True
+    max_spread_multiplier: float = Field(default=3.0, ge=1.0)
+    correlation_window_minutes: int = Field(default=60, ge=1)
+    correlation_group_limit: int = Field(default=2, ge=1)
+
+
+class AntiOvertradingConfig(BaseModel):
+    """Controls repeated-signal suppression."""
+
+    enabled: bool = True
+    cooldown_bars: int = Field(default=3, ge=0)
+    max_signals_per_hour: int = Field(default=4, ge=1)
+    consecutive_loss_pause_count: int = Field(default=3, ge=1)
+    pause_hours: int = Field(default=2, ge=1)
+
+
+class HorizonConfig(BaseModel):
+    """Natural-language horizon parsing defaults."""
+
+    default_timeframe: str = "H1"
+    default_horizon: str = "2h"
+    allow_relative_words: bool = True
+
+
+class NotificationsConfig(BaseModel):
+    """Optional outbound notification channels."""
+
+    enabled: bool = False
+    telegram_enabled: bool = False
+    telegram_chat_id: str | None = None
+    discord_webhook_url: str | None = None
+
+
+class BackvalidationConfig(BaseModel):
+    """Relative robust gate thresholds for signal validation."""
+
+    min_trades: int = Field(default=30, ge=1)
+    min_relative_delta: float = Field(default=0.03, ge=0.0, le=1.0)
+    min_profit_factor: float = Field(default=1.0, ge=0.0)
+
+
+def _default_signal_strategies() -> list[SignalStrategyConfig]:
+    return [
+        SignalStrategyConfig(strategy_id="trend_following", weight=0.20),
+        SignalStrategyConfig(strategy_id="mean_reversion", weight=0.18),
+        SignalStrategyConfig(strategy_id="momentum_breakout", weight=0.16),
+        SignalStrategyConfig(strategy_id="scalping_reversal", weight=0.12),
+        SignalStrategyConfig(strategy_id="swing_composite", weight=0.14),
+        SignalStrategyConfig(strategy_id="investment_fundamental", weight=0.08),
+        SignalStrategyConfig(strategy_id="range_scalp", weight=0.12),
+    ]
+
+
+class SignalsConfig(BaseModel):
+    """Signal engine module configuration."""
+
+    enabled: bool = True
+    engine: SignalEngineConfig = Field(default_factory=SignalEngineConfig)
+    strategies: list[SignalStrategyConfig] = Field(default_factory=_default_signal_strategies)
+    ensemble: EnsembleConfig = Field(default_factory=EnsembleConfig)
+    confidence: ConfidenceConfig = Field(default_factory=ConfidenceConfig)
+    filters: FiltersConfig = Field(default_factory=FiltersConfig)
+    anti_overtrading: AntiOvertradingConfig = Field(default_factory=AntiOvertradingConfig)
+    horizon: HorizonConfig = Field(default_factory=HorizonConfig)
+    notifications: NotificationsConfig = Field(default_factory=NotificationsConfig)
+    backvalidation: BackvalidationConfig = Field(default_factory=BackvalidationConfig)
+
+
 class RootConfig(BaseModel):
     """Root merged configuration."""
 
@@ -147,6 +277,7 @@ class RootConfig(BaseModel):
     brokers: list[BrokerConfig] = Field(default_factory=list)
     strategies: list[StrategyConfig] = Field(default_factory=list)
     indicators: IndicatorsConfig = Field(default_factory=IndicatorsConfig)
+    signals: SignalsConfig = Field(default_factory=SignalsConfig)
 
 
 for model in (
@@ -159,6 +290,16 @@ for model in (
     IndicatorEngineConfig,
     RegimeConfig,
     IndicatorsConfig,
+    SignalEngineConfig,
+    SignalStrategyConfig,
+    EnsembleConfig,
+    ConfidenceConfig,
+    FiltersConfig,
+    AntiOvertradingConfig,
+    HorizonConfig,
+    NotificationsConfig,
+    BackvalidationConfig,
+    SignalsConfig,
     RootConfig,
 ):
     model.model_config = {"extra": "forbid"}

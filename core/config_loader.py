@@ -41,13 +41,14 @@ def load_config(path: Path) -> RootConfig:
 def save_config(config: RootConfig, path: Path) -> None:
     """Save a validated config object to YAML file(s)."""
 
-    payload = config.model_dump(mode="python")
+    payload = config.model_dump(mode="json")
     if path.is_dir() or path.suffix == "":
         path.mkdir(parents=True, exist_ok=True)
         _write_yaml(path / "system.yaml", {"system": payload["system"]})
         _write_yaml(path / "brokers.yaml", {"brokers": payload["brokers"]})
         _write_yaml(path / "strategies.yaml", {"strategies": payload["strategies"]})
         _write_yaml(path / "indicators.yaml", {"indicators": payload["indicators"]})
+        _write_yaml(path / "signals.yaml", {"signals": payload["signals"]})
         return
 
     _write_yaml(path, payload)
@@ -104,7 +105,7 @@ def _load_raw_data(path: Path) -> dict[str, Any]:
 
 def _load_from_directory(config_dir: Path) -> dict[str, Any]:
     merged: dict[str, Any] = {}
-    files = ("system.yaml", "brokers.yaml", "strategies.yaml", "indicators.yaml")
+    files = ("system.yaml", "brokers.yaml", "strategies.yaml", "indicators.yaml", "signals.yaml")
 
     for file_name in files:
         file_path = config_dir / file_name

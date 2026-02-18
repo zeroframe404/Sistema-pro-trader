@@ -7,6 +7,7 @@ import json
 import time
 from dataclasses import dataclass
 from datetime import UTC, timedelta
+from typing import Any, cast
 
 from core.events import BarCloseEvent
 from data.asset_types import AssetClass
@@ -141,7 +142,7 @@ class IndicatorEngine:
         if not normalized_specs:
             return {}
 
-        requested_ids = [spec["id"] for spec in normalized_specs]
+        requested_ids = [str(spec["id"]) for spec in normalized_specs]
         ordered_ids = self.get_dependency_order(requested_ids)
 
         # Add synthetic dependency specs if needed.
@@ -155,7 +156,12 @@ class IndicatorEngine:
         async with self._lock:
             for dep_id in ordered_ids:
                 for spec in by_id.get(dep_id, []):
-                    indicator_params = dict(spec.get("params", {}))
+                    raw_params = spec.get("params", {})
+                    indicator_params = (
+                        {str(key): value for key, value in raw_params.items()}
+                        if isinstance(raw_params, dict)
+                        else {}
+                    )
                     series = await self.compute(dep_id, bars, **indicator_params)
                     if bool(spec.get("requested", True)):
                         result_key = self._spec_key(spec)
@@ -248,7 +254,8 @@ class IndicatorEngine:
         cls = self._indicator_types.get(indicator_id)
         if cls is None:
             raise KeyError(f"Unsupported indicator: {indicator_id}")
-        return cls(backend=self._backend)
+        ctor = cast(Any, cls)
+        return cast(BaseIndicator, ctor(backend=self._backend))
 
     @staticmethod
     def _normalize_id(indicator_id: str) -> str:
@@ -317,7 +324,8 @@ class IndicatorEngine:
         if isinstance(explicit, str) and explicit:
             return explicit
         identifier = str(spec["id"])
-        params = dict(spec.get("params", {}))
+        raw_params = spec.get("params", {})
+        params = {str(key): value for key, value in raw_params.items()} if isinstance(raw_params, dict) else {}
         if not params:
             return identifier
         flat = "_".join(f"{key}_{params[key]}" for key in sorted(params))

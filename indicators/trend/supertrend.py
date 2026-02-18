@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from data.models import OHLCVBar
-from indicators._utils import build_indicator_series, empty_series
+from indicators._utils import build_indicator_series, empty_series, param_float, param_int
 from indicators.base_indicator import BaseIndicator
 from indicators.indicator_backend import IndicatorBackend
 from indicators.indicator_result import IndicatorSeries
@@ -31,8 +31,8 @@ class SuperTrend(BaseIndicator):
         return self.atr_period
 
     def compute(self, bars: list[OHLCVBar], **params: object) -> IndicatorSeries:
-        atr_period = int(params.get("atr_period", self.atr_period))
-        multiplier = float(params.get("multiplier", self.multiplier))
+        atr_period = param_int(params, "atr_period", self.atr_period)
+        multiplier = param_float(params, "multiplier", self.multiplier)
 
         if len(bars) < atr_period:
             return empty_series(

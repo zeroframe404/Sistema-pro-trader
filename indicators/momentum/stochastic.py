@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from data.models import OHLCVBar
-from indicators._utils import build_indicator_series, empty_series
+from indicators._utils import build_indicator_series, empty_series, param_int
 from indicators.base_indicator import BaseIndicator
 from indicators.indicator_backend import IndicatorBackend
 from indicators.indicator_result import IndicatorSeries
@@ -33,8 +33,8 @@ class Stochastic(BaseIndicator):
         return self.k_period + self.d_period - 1
 
     def compute(self, bars: list[OHLCVBar], **params: object) -> IndicatorSeries:
-        k_period = int(params.get("k_period", self.k_period))
-        d_period = int(params.get("d_period", self.d_period))
+        k_period = param_int(params, "k_period", self.k_period)
+        d_period = param_int(params, "d_period", self.d_period)
         warmup = k_period + d_period - 1
 
         if len(bars) < warmup:
@@ -96,9 +96,9 @@ class StochRSI(BaseIndicator):
         return self.rsi_period + self.stoch_period
 
     def compute(self, bars: list[OHLCVBar], **params: object) -> IndicatorSeries:
-        rsi_period = int(params.get("rsi_period", self.rsi_period))
-        stoch_period = int(params.get("stoch_period", self.stoch_period))
-        d_period = int(params.get("d_period", self.d_period))
+        rsi_period = param_int(params, "rsi_period", self.rsi_period)
+        stoch_period = param_int(params, "stoch_period", self.stoch_period)
+        d_period = param_int(params, "d_period", self.d_period)
 
         warmup = rsi_period + stoch_period
         if len(bars) < warmup:

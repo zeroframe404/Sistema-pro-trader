@@ -1,0 +1,125 @@
+signals:
+  enabled: true
+  engine:
+    enabled: true
+    default_lookback_bars: 500
+    signal_expiry_minutes: 120
+    signal_history_limit: 500
+    emit_on_bar_close: true
+
+  strategies:
+    - strategy_id: trend_following
+      enabled: true
+      weight: 0.20
+      min_confidence: 0.45
+      compatible_asset_classes: [forex, crypto, equity, etf]
+      compatible_regimes: [strong_uptrend, weak_uptrend, strong_downtrend, weak_downtrend]
+      horizons: [intraday, swing]
+      params:
+        adx_min: 20
+        overbought_rsi: 75
+    - strategy_id: mean_reversion
+      enabled: true
+      weight: 0.18
+      min_confidence: 0.45
+      compatible_asset_classes: [forex, crypto, equity]
+      compatible_regimes: [ranging, weak_uptrend, weak_downtrend]
+      horizons: [scalp, intraday]
+      params:
+        rsi_low: 30
+        rsi_high: 70
+    - strategy_id: momentum_breakout
+      enabled: true
+      weight: 0.16
+      min_confidence: 0.48
+      compatible_asset_classes: [forex, crypto, equity, etf]
+      compatible_regimes: [weak_uptrend, strong_uptrend, weak_downtrend, strong_downtrend]
+      horizons: [intraday, swing]
+      params:
+        lookback: 20
+        volume_ratio_min: 1.1
+    - strategy_id: scalping_reversal
+      enabled: true
+      weight: 0.12
+      min_confidence: 0.50
+      compatible_asset_classes: [forex, crypto, binary_option]
+      compatible_regimes: [ranging, weak_uptrend, weak_downtrend]
+      horizons: [scalp]
+      params:
+        fast_rsi_period: 7
+    - strategy_id: swing_composite
+      enabled: true
+      weight: 0.14
+      min_confidence: 0.45
+      compatible_asset_classes: [equity, etf, cedear, forex, crypto]
+      compatible_regimes: [strong_uptrend, weak_uptrend, ranging]
+      horizons: [swing, position]
+      params:
+        trend_weight: 0.6
+    - strategy_id: investment_fundamental
+      enabled: true
+      weight: 0.08
+      min_confidence: 0.40
+      compatible_asset_classes: [equity, cedear, bond, mutual_fund, etf]
+      compatible_regimes: [strong_uptrend, weak_uptrend, ranging]
+      horizons: [position, investment]
+      params:
+        trend_months: 6
+    - strategy_id: range_scalp
+      enabled: true
+      weight: 0.12
+      min_confidence: 0.50
+      compatible_asset_classes: [forex, crypto]
+      compatible_regimes: [ranging]
+      horizons: [scalp]
+      params:
+        range_lookback: 40
+
+  ensemble:
+    method: weighted_vote
+    tie_breaker: regime_weighted
+    wait_threshold: 0.1
+    contradiction_threshold: 0.5
+
+  confidence:
+    contradiction_penalty: 0.2
+    regime_mismatch_penalty: 0.25
+    non_trade_penalty: 0.35
+    strong_threshold: 0.75
+    moderate_threshold: 0.55
+    weak_threshold: 0.40
+    extreme_volatility_cap: 0.30
+    illiquid_cap: 0.20
+
+  filters:
+    regime_filter: true
+    news_filter: true
+    session_filter: true
+    spread_filter: true
+    correlation_filter: true
+    max_spread_multiplier: 3.0
+    correlation_window_minutes: 60
+    correlation_group_limit: 2
+
+  anti_overtrading:
+    enabled: true
+    cooldown_bars: 3
+    max_signals_per_hour: 4
+    consecutive_loss_pause_count: 3
+    pause_hours: 2
+
+  horizon:
+    default_timeframe: H1
+    default_horizon: 2h
+    allow_relative_words: true
+
+  notifications:
+    enabled: false
+    telegram_enabled: false
+    telegram_chat_id:
+    discord_webhook_url:
+
+  backvalidation:
+    min_trades: 30
+    min_relative_delta: 0.03
+    min_profit_factor: 1.0

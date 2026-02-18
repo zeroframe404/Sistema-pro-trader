@@ -80,7 +80,7 @@ class IndicatorBackend:
             return np.asarray(result, dtype=float)
 
         series = pd.Series(close, dtype=float)
-        return series.rolling(window=period, min_periods=period).mean().to_numpy(dtype=float)
+        return np.asarray(series.rolling(window=period, min_periods=period).mean().to_numpy(dtype=float), dtype=float)
 
     def ema(self, close: np.ndarray, period: int) -> np.ndarray:
         if period <= 0:
@@ -91,7 +91,7 @@ class IndicatorBackend:
             return np.asarray(result, dtype=float)
 
         series = pd.Series(close, dtype=float)
-        return series.ewm(span=period, adjust=False).mean().to_numpy(dtype=float)
+        return np.asarray(series.ewm(span=period, adjust=False).mean().to_numpy(dtype=float), dtype=float)
 
     def rsi(self, close: np.ndarray, period: int) -> np.ndarray:
         if period <= 0:
@@ -104,7 +104,7 @@ class IndicatorBackend:
         if self._backend == "pandas_ta":
             series = pd.Series(close, dtype=float)
             result = self._pandas_ta.rsi(series, length=period)
-            return result.to_numpy(dtype=float)
+            return np.asarray(result.to_numpy(dtype=float), dtype=float)
 
         series = pd.Series(close, dtype=float)
         delta = series.diff()
@@ -116,7 +116,7 @@ class IndicatorBackend:
         out = 100.0 - (100.0 / (1.0 + rs))
         flat_mask = (avg_gain == 0) & (avg_loss == 0)
         out = out.mask(flat_mask, 50.0)
-        return out.to_numpy(dtype=float)
+        return np.asarray(out.to_numpy(dtype=float), dtype=float)
 
     def macd(
         self,
@@ -169,7 +169,7 @@ class IndicatorBackend:
             axis=1,
         ).max(axis=1)
         atr = tr.ewm(alpha=1 / period, adjust=False, min_periods=period).mean()
-        return atr.to_numpy(dtype=float)
+        return np.asarray(atr.to_numpy(dtype=float), dtype=float)
 
     def bbands(
         self,
@@ -228,7 +228,7 @@ class IndicatorBackend:
         denom = (highest - lowest).replace(0, np.nan)
         k = 100.0 * ((close_s - lowest) / denom)
         d = k.rolling(window=d_period, min_periods=d_period).mean()
-        return k.to_numpy(dtype=float), d.to_numpy(dtype=float)
+        return np.asarray(k.to_numpy(dtype=float), dtype=float), np.asarray(d.to_numpy(dtype=float), dtype=float)
 
     def adx(
         self,

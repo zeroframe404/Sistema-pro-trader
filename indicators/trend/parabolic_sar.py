@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 
 from data.models import OHLCVBar
-from indicators._utils import build_indicator_series, empty_series
+from indicators._utils import build_indicator_series, empty_series, param_float
 from indicators.base_indicator import BaseIndicator
 from indicators.indicator_backend import IndicatorBackend
 from indicators.indicator_result import IndicatorSeries
@@ -31,8 +31,8 @@ class ParabolicSAR(BaseIndicator):
         return 2
 
     def compute(self, bars: list[OHLCVBar], **params: object) -> IndicatorSeries:
-        step = float(params.get("step", self.step))
-        max_step = float(params.get("max_step", self.max_step))
+        step = param_float(params, "step", self.step)
+        max_step = param_float(params, "max_step", self.max_step)
 
         if len(bars) < 2:
             return empty_series(
